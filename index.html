@@ -1,0 +1,1020 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Generador de textos estilo Píxel art</title>
+    <link href="https://fonts.googleapis.com/css2?family=Barriecito&family=Bitcount+Grid+Double&family=Chelsea+Market&family=Chewy&family=Doto&family=DynaPuff&family=Jersey+10&family=Luckiest+Guy&family=Matemasie&family=Micro+5&family=Pixelify+Sans:wght@400..700&family=Press+Start+2P&family=Ranchers&family=Schoolbell&family=Silkscreen:wght@400;700&family=Sixtyfour&family=Spicy+Rice&family=Tiny5&display=swap" rel="stylesheet">
+    <style>
+        :root { --bg: #121212; --panel: #151515; --text: #6200ea; --accent: #6200ea; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg); color: var(--text); display: flex; height: 100vh; margin: 0; overflow: hidden; }
+        
+        /* Panel Lateral */
+        #controls { 
+            width: 320px; background: var(--panel); padding: 15px 20px; 
+            overflow-y: auto; box-shadow: 5px 0 20px rgba(0,0,0,0.8); 
+            border-radius: 0 40px 40px 0; z-index: 10;
+        }
+
+        /* Personalización del Scrollbar (Estilo Oscuro) */
+        #controls::-webkit-scrollbar { width: 10px; }
+        #controls::-webkit-scrollbar-track { background: transparent; }
+        #controls::-webkit-scrollbar-thumb { background: #3a3a3a; border-radius: 10px; border: 2px solid var(--panel); }
+        #controls::-webkit-scrollbar-thumb:hover { background: #555; }
+
+        .group { margin-bottom: 12px; border-bottom: 1px solid #000; box-shadow: 0 1px 0 #2a2a2a; padding-bottom: 10px; }
+        label { display: block; font-size: 11px; margin-bottom: 4px; color: #737373; font-weight: 600; }
+        input[type="text"], input[type="number"], select { 
+            box-sizing: border-box; width: 100%; padding: 8px 12px; background: #2a2a2a; 
+            border: 1px solid #444; color: white; margin-bottom: 8px; 
+            border-radius: 20px; outline: none; transition: 0.3s; box-shadow: 0 4px 8px rgba(0,0,0,0.4);
+        }
+        input[type="text"]:focus, input[type="number"]:focus, select:focus { border-color: var(--accent); }
+        input[type="text"] {
+            background: #080808; /* Gris más oscuro para el texto principal */
+            border: 1px solid #555;
+        }
+        input[type="color"] {
+            -webkit-appearance: none; appearance: none; width: 100%; height: 35px; 
+            border: none; border-radius: 20px; cursor: pointer; padding: 0; overflow: hidden; box-shadow: 0 4px 8px rgba(0,0,0,0.4);
+        }
+        input[type="color"]::-webkit-color-swatch-wrapper { padding: 0; }
+        input[type="color"]::-webkit-color-swatch { border: none; border-radius: 20px; }
+        input[type="color"]::-moz-color-swatch { border: none; border-radius: 20px; }
+        
+        /* Personalización de carga de archivos */
+        input[type="file"] {
+            box-sizing: border-box; width: 100%; padding: 8px 12px; background: #2a2a2a; 
+            border: 1px solid #444; color: white; margin-bottom: 8px; font-size: 12px;
+            border-radius: 20px; outline: none; transition: 0.3s; box-shadow: 0 4px 8px rgba(0,0,0,0.4);
+        }
+        input[type="file"]::-webkit-file-upload-button {
+            background: var(--accent); color: white; border: none; padding: 5px 10px; border-radius: 15px; cursor: pointer; font-weight: bold; margin-right: 10px;
+        }
+
+        /* Checkboxes Retro */
+        .checkbox-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+        .checkbox-row input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--accent); cursor: pointer; border-radius: 4px; margin: 0; }
+        .checkbox-row label { margin: 0; cursor: pointer; color: white; font-weight: normal; font-size: 12px; }
+
+        /* Sliders (Range) */
+        input[type="range"] { -webkit-appearance: none; width: 100%; background: transparent; margin: 10px 0; }
+        input[type="range"]:focus { outline: none; }
+        input[type="range"]::-webkit-slider-runnable-track { width: 100%; height: 8px; cursor: pointer; background: #333; border-radius: 10px; transition: 0.3s; }
+        input[type="range"]::-webkit-slider-thumb { height: 18px; width: 18px; border-radius: 50%; background: var(--accent); cursor: pointer; -webkit-appearance: none; margin-top: -5px; box-shadow: 0 0 10px rgba(98,0,234,0.6); transition: 0.2s; }
+        input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.2); }
+
+        .row { display: flex; gap: 10px; }
+        .row div { flex: 1; }
+
+        /* Área de Previsualización */
+        #preview { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; background-image: radial-gradient(#333 1px, transparent 1px); background-size: 20px 20px; padding: 20px; position: relative; }
+        #canvasContainer { 
+            position: relative; width: 100%; max-width: 1000px; aspect-ratio: 16 / 9; 
+            border: 2px solid #444; border-radius: 20px; background: transparent; 
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5); overflow: hidden;
+        }
+        canvas { image-rendering: pixelated; width: 100%; height: 100%; display: block; }
+        button { background: var(--accent); color: white; border: none; padding: 12px; width: 100%; cursor: pointer; font-weight: bold; font-size: 14px; border-radius: 50px; transition: 0.3s; }
+        button:hover { background: #7c4dff; transform: scale(1.02); }
+    </style>
+</head>
+<body>
+
+<!-- Preloader de fuentes para Canvas -->
+<div style="position: absolute; opacity: 0; pointer-events: none; width: 0; height: 0; overflow: hidden;">
+    <span style="font-family: 'Barriecito';">.</span>
+    <span style="font-family: 'Bitcount Grid Double';">.</span>
+    <span style="font-family: 'Chelsea Market';">.</span>
+    <span style="font-family: 'Chewy';">.</span>
+    <span style="font-family: 'Doto';">.</span>
+    <span style="font-family: 'DynaPuff';">.</span>
+    <span style="font-family: 'Jersey 10';">.</span>
+    <span style="font-family: 'Luckiest Guy';">.</span>
+    <span style="font-family: 'Matemasie';">.</span>
+    <span style="font-family: 'Micro 5';">.</span>
+    <span style="font-family: 'Pixelify Sans';">.</span>
+    <span style="font-family: 'Press Start 2P';">.</span>
+    <span style="font-family: 'Ranchers';">.</span>
+    <span style="font-family: 'Schoolbell';">.</span>
+    <span style="font-family: 'Silkscreen';">.</span>
+    <span style="font-family: 'Sixtyfour';">.</span>
+    <span style="font-family: 'Spicy Rice';">.</span>
+    <span style="font-family: 'Tiny5';">.</span>
+</div>
+
+<div id="controls">
+    <h2>CONTROLES</h2>
+    
+    <div class="group">
+        <label title="Configuraciones globales que afectan todo el lienzo">Ajustes Generales</label>
+        <label title="Cambia el color de fondo del panel (solo visualización)">Fondo de Previsualización</label>
+        <select id="previewBg" onchange="updatePreviewBg()" title="Cambia el color de fondo del panel (solo visualización)">
+            <option value="dark" selected>Oscuro</option>
+            <option value="light">Claro</option>
+        </select>
+        <label title="Define qué texto se dibuja por encima del otro">Orden de Textos (Sobreposición)</label>
+        <select id="layerOrder" onchange="draw()" title="Define qué texto se dibuja por encima del otro">
+            <option value="t1_top">Texto 1 sobre Texto 2</option>
+            <option value="t2_top" selected>Texto 2 sobre Texto 1</option>
+        </select>
+        <label title="Sube una imagen para colocarla de fondo en el lienzo final">Imagen de Fondo (Canvas)</label>
+        <input type="file" id="bgImage" accept="image/*" onchange="loadBackgroundImage(event)" title="Sube una imagen para colocarla de fondo en el lienzo final">
+        <button onclick="clearBackgroundImage()" style="padding: 8px; font-size: 12px; margin-top: 5px;" title="Elimina la imagen de fondo actual">Quitar Imagen</button>
+        <label style="margin-top: 12px;" title="Aplica un color plano sobre el fondo con opacidad ajustable">Capa de Color Fondo / Opacidad</label>
+        <div class="row" title="Aplica un color plano sobre el fondo con opacidad ajustable">
+            <div><input type="color" id="bgColor" value="#000000" oninput="draw()" title="Color de la capa de fondo"></div>
+            <div><input type="range" id="bgAlpha" min="0" max="1" step="0.05" value="0" oninput="draw()" title="Opacidad de la capa de fondo"></div>
+        </div>
+    </div>
+
+    <div class="group">
+        <label title="Texto que aparecerá en la parte principal">Texto Superior</label>
+        <input type="text" id="text1" value="PIXEL" oninput="draw()" title="Texto que aparecerá en la parte principal">
+        <label title="Estilo tipográfico del texto">Fuente</label>
+        <select id="font1" onchange="draw()" title="Estilo tipográfico del texto">
+            <option value="'Pixelify Sans'" style="font-family: 'Pixelify Sans';">Pixelify Sans</option>
+            <option value="'Barriecito'" style="font-family: 'Barriecito';">Barriecito</option>
+            <option value="'Bitcount Grid Double'" style="font-family: 'Bitcount Grid Double';">Bitcount Grid Double</option>
+            <option value="'Chelsea Market'" style="font-family: 'Chelsea Market';">Chelsea Market</option>
+            <option value="'Chewy'" style="font-family: 'Chewy';">Chewy</option>
+            <option value="'Doto'" style="font-family: 'Doto';">Doto</option>
+            <option value="'DynaPuff'" style="font-family: 'DynaPuff';">DynaPuff</option>
+            <option value="'Jersey 10'" style="font-family: 'Jersey 10';">Jersey 10</option>
+            <option value="'Luckiest Guy'" style="font-family: 'Luckiest Guy';">Luckiest Guy</option>
+            <option value="'Matemasie'" style="font-family: 'Matemasie';">Matemasie</option>
+            <option value="'Micro 5'" style="font-family: 'Micro 5';">Micro 5</option>
+            <option value="'Press Start 2P'" style="font-family: 'Press Start 2P';">Press Start 2P</option>
+            <option value="'Ranchers'" style="font-family: 'Ranchers';">Ranchers</option>
+            <option value="'Schoolbell'" style="font-family: 'Schoolbell';">Schoolbell</option>
+            <option value="'Silkscreen'" style="font-family: 'Silkscreen';">Silkscreen</option>
+            <option value="'Sixtyfour'" style="font-family: 'Sixtyfour';">Sixtyfour</option>
+            <option value="'Spicy Rice'" style="font-family: 'Spicy Rice';">Spicy Rice</option>
+            <option value="'Tiny5'" style="font-family: 'Tiny5';">Tiny5</option>
+        </select>
+        <div class="row">
+            <div title="Tamaño base de la fuente"><label>Tamaño</label><input type="number" id="size1" value="140" oninput="draw()" title="Tamaño base de la fuente"></div>
+            <div title="Separación horizontal entre cada letra"><label>Espaciado</label><input type="number" id="spacing1" value="110" oninput="draw()" title="Separación horizontal entre cada letra"></div>
+        </div>
+        <div class="row">
+            <div title="Color superior del degradado"><label>Degradado Sup</label><input type="color" id="c1a" value="#ffff00" oninput="draw()" title="Color superior del degradado"></div>
+            <div title="Color inferior del degradado"><label>Degradado Inf</label><input type="color" id="c1b" value="#ff8800" oninput="draw()" title="Color inferior del degradado"></div>
+        </div>
+        <div class="checkbox-row" title="Aplica un patrón retro de mezcla de píxeles">
+            <input type="checkbox" id="dither1" onchange="draw()" title="Activa el efecto de dither (mezcla de píxeles)">
+            <label for="dither1" title="Activa el efecto de dither (mezcla de píxeles)">Efecto Dither (Retro)</label>
+        </div>
+        <div class="checkbox-row" title="Intercala blanco para simular brillo metálico">
+            <input type="checkbox" id="ditherWhite1" onchange="draw()" title="Intercala blanco en el degradado">
+            <label for="ditherWhite1" title="Intercala blanco en el degradado">Dither con Blanco (Brillo)</label>
+        </div>
+        <label title="Tamaño de los puntos o píxeles del patrón de dither">Escala Dither</label>
+        <input type="range" id="ditherScale1" min="1" max="15" value="4" oninput="draw()" title="Tamaño de los puntos o píxeles del patrón de dither">
+        <label title="Curva el texto hacia arriba (positivo) o hacia abajo (negativo)">Arqueo / Curva</label>
+        <input type="range" id="arc1" min="-100" max="100" value="0" oninput="draw()" title="Curva el texto hacia arriba (positivo) o hacia abajo (negativo)">
+        <label title="Gira cada letra irregularmente para dar un aspecto tembloroso">Rotación Aleatoria</label>
+        <input type="range" id="randRot1" min="0" max="45" value="0" oninput="draw()" title="Gira cada letra irregularmente para dar un aspecto tembloroso">
+        <label title="Grosor y color de la línea exterior del texto">Contorno (Outline)</label>
+        <div class="row" title="Grosor y color de la línea exterior del texto">
+            <div><input type="range" id="outSize1" min="0" max="20" value="0" oninput="draw()" title="Grosor del contorno"></div>
+            <div><input type="color" id="outColor1" value="#ffffff" oninput="draw()" title="Color del contorno"></div>
+        </div>
+        <label title="Añade un recuadro estilo botón detrás del texto">Fondo de Texto (Botón)</label>
+        <div class="checkbox-row" title="Muestra un recuadro de fondo">
+            <input type="checkbox" id="boxShow1" onchange="draw()" title="Activa el fondo de botón">
+            <label for="boxShow1" title="Activa el fondo de botón">Mostrar Recuadro</label>
+        </div>
+        <div class="row" title="Relleno y Línea del recuadro">
+            <div title="Color de Relleno"><label>Color Relleno</label><input type="color" id="boxFill1" value="#e52521" oninput="draw()" title="Color de relleno del botón"></div>
+            <div title="Color de Línea"><label>Color Línea</label><input type="color" id="boxOutColor1" value="#ffffff" oninput="draw()" title="Color de línea del botón"></div>
+        </div>
+        <div class="row" title="Grosor de la línea y espacio interior">
+            <div title="Grosor de Línea"><label>Grosor Línea</label><input type="range" id="boxOutSize1" min="0" max="20" value="4" oninput="draw()" title="Grosor de la línea del botón"></div>
+            <div title="Espaciado (Padding)"><label>Padding</label><input type="range" id="boxPad1" min="0" max="100" value="30" oninput="draw()" title="Espaciado interior del botón"></div>
+        </div>
+    </div>
+
+    <div class="group">
+        <label title="Texto que aparecerá en la parte secundaria">Texto Inferior</label>
+        <input type="text" id="text2" value="MASTER" oninput="draw()" title="Texto que aparecerá en la parte secundaria">
+        <label title="Estilo tipográfico del texto">Fuente</label>
+        <select id="font2" onchange="draw()" title="Estilo tipográfico del texto">
+            <option value="'Pixelify Sans'" style="font-family: 'Pixelify Sans';">Pixelify Sans</option>
+            <option value="'Barriecito'" style="font-family: 'Barriecito';">Barriecito</option>
+            <option value="'Bitcount Grid Double'" style="font-family: 'Bitcount Grid Double';">Bitcount Grid Double</option>
+            <option value="'Chelsea Market'" style="font-family: 'Chelsea Market';">Chelsea Market</option>
+            <option value="'Chewy'" style="font-family: 'Chewy';">Chewy</option>
+            <option value="'Doto'" style="font-family: 'Doto';">Doto</option>
+            <option value="'DynaPuff'" style="font-family: 'DynaPuff';">DynaPuff</option>
+            <option value="'Jersey 10'" style="font-family: 'Jersey 10';">Jersey 10</option>
+            <option value="'Luckiest Guy'" style="font-family: 'Luckiest Guy';">Luckiest Guy</option>
+            <option value="'Matemasie'" style="font-family: 'Matemasie';">Matemasie</option>
+            <option value="'Micro 5'" style="font-family: 'Micro 5';">Micro 5</option>
+            <option value="'Press Start 2P'" style="font-family: 'Press Start 2P';">Press Start 2P</option>
+            <option value="'Ranchers'" style="font-family: 'Ranchers';">Ranchers</option>
+            <option value="'Schoolbell'" style="font-family: 'Schoolbell';">Schoolbell</option>
+            <option value="'Silkscreen'" style="font-family: 'Silkscreen';">Silkscreen</option>
+            <option value="'Sixtyfour'" style="font-family: 'Sixtyfour';">Sixtyfour</option>
+            <option value="'Spicy Rice'" style="font-family: 'Spicy Rice';">Spicy Rice</option>
+            <option value="'Tiny5'" style="font-family: 'Tiny5';">Tiny5</option>
+        </select>
+        <div class="row">
+            <div title="Tamaño base de la fuente"><label>Tamaño</label><input type="number" id="size2" value="180" oninput="draw()" title="Tamaño base de la fuente"></div>
+            <div title="Separación horizontal entre cada letra"><label>Espaciado</label><input type="number" id="spacing2" value="140" oninput="draw()" title="Separación horizontal entre cada letra"></div>
+        </div>
+        <div class="row">
+            <div title="Color superior del degradado"><label>Degradado Sup</label><input type="color" id="c2a" value="#00ffff" oninput="draw()" title="Color superior del degradado"></div>
+            <div title="Color inferior del degradado"><label>Degradado Inf</label><input type="color" id="c2b" value="#0055ff" oninput="draw()" title="Color inferior del degradado"></div>
+        </div>
+        <div class="checkbox-row" title="Aplica un patrón retro de mezcla de píxeles">
+            <input type="checkbox" id="dither2" onchange="draw()" title="Activa el efecto de dither (mezcla de píxeles)">
+            <label for="dither2" title="Activa el efecto de dither (mezcla de píxeles)">Efecto Dither (Retro)</label>
+        </div>
+        <div class="checkbox-row" title="Intercala blanco para simular brillo metálico">
+            <input type="checkbox" id="ditherWhite2" onchange="draw()" title="Intercala blanco en el degradado">
+            <label for="ditherWhite2" title="Intercala blanco en el degradado">Dither con Blanco (Brillo)</label>
+        </div>
+        <label title="Tamaño de los puntos o píxeles del patrón de dither">Escala Dither</label>
+        <input type="range" id="ditherScale2" min="1" max="15" value="4" oninput="draw()" title="Tamaño de los puntos o píxeles del patrón de dither">
+        <label title="Curva el texto hacia arriba (positivo) o hacia abajo (negativo)">Arqueo / Curva</label>
+        <input type="range" id="arc2" min="-100" max="100" value="0" oninput="draw()" title="Curva el texto hacia arriba (positivo) o hacia abajo (negativo)">
+        <label title="Gira cada letra irregularmente para dar un aspecto tembloroso">Rotación Aleatoria</label>
+        <input type="range" id="randRot2" min="0" max="45" value="0" oninput="draw()" title="Gira cada letra irregularmente para dar un aspecto tembloroso">
+        <label title="Grosor y color de la línea exterior del texto">Contorno (Outline)</label>
+        <div class="row" title="Grosor y color de la línea exterior del texto">
+            <div><input type="range" id="outSize2" min="0" max="20" value="0" oninput="draw()" title="Grosor del contorno"></div>
+            <div><input type="color" id="outColor2" value="#000000" oninput="draw()" title="Color del contorno"></div>
+        </div>
+        <label title="Añade un recuadro estilo botón detrás del texto">Fondo de Texto (Botón)</label>
+        <div class="checkbox-row" title="Muestra un recuadro de fondo">
+            <input type="checkbox" id="boxShow2" onchange="draw()" title="Activa el fondo de botón">
+            <label for="boxShow2" title="Activa el fondo de botón">Mostrar Recuadro</label>
+        </div>
+        <div class="row" title="Relleno y Línea del recuadro">
+            <div title="Color de Relleno"><label>Color Relleno</label><input type="color" id="boxFill2" value="#222222" oninput="draw()" title="Color de relleno del botón"></div>
+            <div title="Color de Línea"><label>Color Línea</label><input type="color" id="boxOutColor2" value="#ffffff" oninput="draw()" title="Color de línea del botón"></div>
+        </div>
+        <div class="row" title="Grosor de la línea y espacio interior">
+            <div title="Grosor de Línea"><label>Grosor Línea</label><input type="range" id="boxOutSize2" min="0" max="20" value="4" oninput="draw()" title="Grosor de la línea del botón"></div>
+            <div title="Espaciado (Padding)"><label>Padding</label><input type="range" id="boxPad2" min="0" max="100" value="30" oninput="draw()" title="Espaciado interior del botón"></div>
+        </div>
+    </div>
+
+    <div class="group">
+        <label title="Longitud y color del efecto volumétrico/extrusión 3D">Profundidad (3D)</label>
+        <div class="row" title="Longitud y color del efecto volumétrico/extrusión 3D">
+            <div><input type="range" id="depthSize" min="0" max="30" value="10" oninput="draw()" title="Largo de la profundidad"></div>
+            <div><input type="color" id="depthColor" value="#440000" oninput="draw()" title="Color de la profundidad"></div>
+        </div>
+        <label title="Distancia, opacidad, difuminado y color de la sombra exterior proyectada">Sombra (Drop Shadow)</label>
+        <div class="row" title="Distancia y color de la sombra">
+            <div title="Distancia"><input type="range" id="shadowSize" min="0" max="45" value="15" oninput="draw()" title="Distancia de la sombra"></div>
+            <div title="Color"><input type="color" id="shadowColor" value="#000000" oninput="draw()" title="Color de la sombra"></div>
+        </div>
+        <div class="row" title="Opacidad y difuminado de la sombra">
+            <div title="Opacidad"><input type="range" id="shadowAlpha" min="0" max="1" step="0.05" value="1" oninput="draw()" title="Opacidad de la sombra"></div>
+            <div title="Difuminado (Blur)"><input type="range" id="shadowBlur" min="0" max="50" value="0" oninput="draw()" title="Difuminado de la sombra"></div>
+        </div>
+        <label title="Borde y resplandor detrás de toda la figura">Contorno Global (Fondo)</label>
+        <div class="row" title="Grosor, difuminado y color del contorno global">
+            <div title="Grosor"><input type="range" id="gOutSize" min="0" max="30" value="0" oninput="draw()" title="Grosor del contorno global"></div>
+            <div title="Difuminado (Blur)"><input type="range" id="gOutBlur" min="0" max="50" value="0" oninput="draw()" title="Difuminado del contorno global"></div>
+            <div title="Color"><input type="color" id="gOutColor" value="#ffffff" oninput="draw()" title="Color del contorno global"></div>
+        </div>
+    </div>
+
+    <div class="row" style="margin-bottom: 10px;">
+        <button onclick="saveConfig()" title="Guarda la configuración actual en un archivo JSON" style="font-size: 12px; padding: 10px; background: #00e5ff; color: #000;">Guardar JSON</button>
+        <button onclick="document.getElementById('loadConfigInput').click()" title="Carga una configuración desde un archivo JSON" style="font-size: 12px; padding: 10px; background: #333;">Cargar JSON</button>
+        <input type="file" id="loadConfigInput" accept=".json" style="display: none;" onchange="loadConfig(event)">
+    </div>
+    <button onclick="download()" title="Exporta tu diseño final como imagen PNG (HD 1920x1080)">Descargar PNG</button>
+</div>
+
+<div id="preview">
+    <div id="canvasContainer">
+        <canvas id="canvas" width="1920" height="1080"></canvas>
+        <span id="inlineEdit" contenteditable="true" spellcheck="false" style="display:none; position:absolute; z-index: 100; text-align: center; background: rgba(0,0,0,0.6); color: white; border: 2px dashed #00e5ff; outline: none; border-radius: 10px; padding: 5px 15px; transform-origin: center center; white-space: nowrap; cursor: text;"></span>
+    </div>
+</div>
+
+<script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+
+    // Utilidades para Dither
+    function hexToRgb(hex) {
+        const bigint = parseInt(hex.slice(1), 16);
+        return [(bigint >> 16) & 255, (bigint >> 8) & 255, bigint & 255];
+    }
+
+    const ditherCache = {};
+    function getDitherPattern(colorA, colorB, size, scale, useWhite) {
+        size = Math.max(1, Math.floor(size)); // Evita errores de tamaño
+        scale = Math.max(1, Math.floor(scale));
+        const key = `${colorA}-${colorB}-${size}-${scale}-${useWhite}`;
+        if (ditherCache[key]) return ditherCache[key];
+
+        const c1 = hexToRgb(colorA);
+        const c2 = hexToRgb(colorB);
+        const cw = [255, 255, 255]; // Blanco
+        const bayer = [
+            [ 0, 8, 2, 10], [12, 4, 14, 6],
+            [ 3, 11, 1, 9], [15, 7, 13, 5]
+        ];
+        
+        const patWidth = 4 * scale;
+        const patCanvas = document.createElement('canvas');
+        patCanvas.width = patWidth;
+        patCanvas.height = size;
+        const pctx = patCanvas.getContext('2d');
+        const imgData = pctx.createImageData(patWidth, size);
+        
+        for(let y = 0; y < size; y++) {
+            const ratio = y / size;
+            const bayerY = Math.floor(y / scale) % 4;
+            for(let x = 0; x < patWidth; x++) {
+                const bayerX = Math.floor(x / scale) % 4;
+                const threshold = (bayer[bayerY][bayerX] + 0.5) / 16;
+                
+                let c;
+                if (useWhite) {
+                    if (ratio < 0.5) { c = (ratio * 2 > threshold) ? cw : c1; } 
+                    else { c = ((ratio - 0.5) * 2 > threshold) ? c2 : cw; }
+                } else {
+                    c = (ratio > threshold) ? c2 : c1;
+                }
+                
+                const idx = (y * patWidth + x) * 4;
+                imgData.data.set([...c, 255], idx);
+            }
+        }
+        pctx.putImageData(imgData, 0, 0);
+        const pattern = ctx.createPattern(patCanvas, 'repeat');
+        ditherCache[key] = pattern;
+        return pattern;
+    }
+
+    // Estado para imagen de fondo
+    let bgImageObj = null;
+
+    function loadBackgroundImage(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function(event) {
+            const img = new Image();
+            img.onload = function() {
+                bgImageObj = img;
+                draw();
+            }
+            img.src = event.target.result;
+        }
+        reader.readAsDataURL(file);
+    }
+
+    function clearBackgroundImage() {
+        bgImageObj = null;
+        document.getElementById('bgImage').value = '';
+        draw();
+    }
+
+    function updatePreviewBg() {
+        const mode = document.getElementById('previewBg').value;
+        const preview = document.getElementById('preview');
+        if (mode === 'light') {
+            preview.style.backgroundColor = '#e0e0e0';
+            preview.style.backgroundImage = 'radial-gradient(#999 1px, transparent 1px)';
+        } else {
+            preview.style.backgroundColor = ''; 
+            preview.style.backgroundImage = 'radial-gradient(#333 1px, transparent 1px)';
+        }
+    }
+
+    // Estado para gestionar posiciones, bounding boxes y arrastre
+    const textState = {
+        t1: { id: 't1', x: 960, y: 320, angle: 0, scale: 1, bounds: null },
+        t2: { id: 't2', x: 960, y: 760, angle: 0, scale: 1, bounds: null }
+    };
+    let activeText = null;
+    let dragMode = null; // 'move', 'rotate', 'scale'
+    let dragStartX = 0;
+    let dragStartY = 0;
+    let initialAngle = 0;
+    let initialScale = 1;
+    let initialDist = 0;
+    const pad = 15; // Relleno de la caja de selección
+
+    function getMousePos(e) {
+        const rect = canvas.getBoundingClientRect();
+        const scaleX = canvas.width / rect.width;
+        const scaleY = canvas.height / rect.height;
+        return {
+            x: (e.clientX - rect.left) * scaleX,
+            y: (e.clientY - rect.top) * scaleY
+        };
+    }
+
+    // Invierte la rotación y escala para calcular clics precisos en textos transformados
+    function getLocalPos(pos, state) {
+        let dx = pos.x - state.x;
+        let dy = pos.y - state.y;
+        let cos = Math.cos(-state.angle);
+        let sin = Math.sin(-state.angle);
+        let rx = dx * cos - dy * sin;
+        let ry = dx * sin + dy * cos;
+        rx /= state.scale;
+        ry /= state.scale;
+        return { x: rx, y: ry };
+    }
+
+    function checkHandles(state, pos) {
+        if (!state.bounds) return false;
+        let localPos = getLocalPos(pos, state);
+        const x = state.bounds.xMin - pad, y = state.bounds.yMin - pad;
+        const w = state.bounds.xMax - state.bounds.xMin + pad * 2, h = state.bounds.yMax - state.bounds.yMin + pad * 2;
+
+        // Comprobar Tirador de Rotación (Arriba centro)
+        if (Math.hypot(localPos.x - (x + w/2), localPos.y - (y - 40 / state.scale)) < 15 / state.scale) {
+            dragMode = 'rotate'; activeText = state.id;
+            initialAngle = Math.atan2(pos.y - state.y, pos.x - state.x) - state.angle;
+            return true;
+        }
+        // Comprobar Tirador de Escala (Abajo derecha)
+        if (Math.abs(localPos.x - (x + w)) < 15/state.scale && Math.abs(localPos.y - (y + h)) < 15/state.scale) {
+            dragMode = 'scale'; activeText = state.id;
+            initialDist = Math.hypot(pos.x - state.x, pos.y - state.y);
+            initialScale = state.scale;
+            return true;
+        }
+        return false;
+    }
+
+    function isHovering(state, pos) {
+        if (!state.bounds) return false;
+        let localPos = getLocalPos(pos, state);
+        const x = state.bounds.xMin - pad, y = state.bounds.yMin - pad;
+        const w = state.bounds.xMax - state.bounds.xMin + pad * 2, h = state.bounds.yMax - state.bounds.yMin + pad * 2;
+        return (localPos.x >= x && localPos.x <= x + w && localPos.y >= y && localPos.y <= y + h);
+    }
+
+    function checkText(state, pos) {
+        if (isHovering(state, pos)) {
+            dragMode = 'move'; activeText = state.id;
+            dragStartX = pos.x - state.x; dragStartY = pos.y - state.y;
+            return true;
+        }
+        return false;
+    }
+
+    canvas.addEventListener('mousedown', (e) => {
+        const pos = getMousePos(e);
+        const order = document.getElementById('layerOrder').value;
+
+        // Dar prioridad a los controles (tiradores) si hay un texto activo
+        if (activeText && checkHandles(textState[activeText], pos)) { draw(); return; }
+
+        // Si no, verificar colisión con los cuerpos de los textos
+        let hit = false;
+        if (order === 't1_top') hit = checkText(textState.t1, pos) || checkText(textState.t2, pos);
+        else hit = checkText(textState.t2, pos) || checkText(textState.t1, pos);
+
+        if (!hit) { activeText = null; dragMode = null; }
+        draw();
+    });
+
+    // --- Edición de texto directamente en el canvas ---
+    canvas.addEventListener('dblclick', (e) => {
+        const pos = getMousePos(e);
+        let clickedText = null;
+        const order = document.getElementById('layerOrder').value;
+        if (order === 't1_top') {
+            if (isHovering(textState.t1, pos)) clickedText = 't1';
+            else if (isHovering(textState.t2, pos)) clickedText = 't2';
+        } else {
+            if (isHovering(textState.t2, pos)) clickedText = 't2';
+            else if (isHovering(textState.t1, pos)) clickedText = 't1';
+        }
+        
+        if (clickedText) {
+            openInlineEditor(clickedText);
+        }
+    });
+
+    function openInlineEditor(textId) {
+        const state = textState[textId];
+        const inputId = textId === 't1' ? 'text1' : 'text2';
+        const mainInput = document.getElementById(inputId);
+        const inlineEdit = document.getElementById('inlineEdit');
+        
+        // Calcular posición en el contenedor a partir del canvas original HD
+        const scaleX = canvas.clientWidth / canvas.width;
+        const scaleY = canvas.clientHeight / canvas.height;
+        const cx = state.x * scaleX;
+        const cy = state.y * scaleY;
+        
+        inlineEdit.style.left = `${cx}px`;
+        inlineEdit.style.top = `${cy}px`;
+        inlineEdit.style.transform = `translate(-50%, -50%) rotate(${state.angle}rad) scale(${state.scale})`;
+        
+        const fontVal = document.getElementById(textId === 't1' ? 'font1' : 'font2').value;
+        const sizeVal = parseInt(document.getElementById(textId === 't1' ? 'size1' : 'size2').value);
+        inlineEdit.style.fontFamily = fontVal;
+        inlineEdit.style.fontSize = `${sizeVal * scaleY}px`;
+        
+        inlineEdit.innerText = mainInput.value;
+        inlineEdit.style.display = 'block';
+        inlineEdit.focus();
+        
+        // Seleccionar todo el texto para reescribir rápidamente
+        const range = document.createRange();
+        range.selectNodeContents(inlineEdit);
+        const sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
+
+        inlineEdit.oninput = () => { mainInput.value = inlineEdit.innerText.replace(/\n/g, ''); draw(); };
+        inlineEdit.onblur = () => { inlineEdit.style.display = 'none'; draw(); };
+        inlineEdit.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); inlineEdit.blur(); } };
+    }
+
+    window.addEventListener('mousemove', (e) => {
+        const pos = getMousePos(e);
+        if (dragMode && activeText) {
+            const state = textState[activeText];
+            if (dragMode === 'move') {
+                state.x = pos.x - dragStartX;
+                state.y = pos.y - dragStartY;
+            } else if (dragMode === 'rotate') {
+                state.angle = Math.atan2(pos.y - state.y, pos.x - state.x) - initialAngle;
+            } else if (dragMode === 'scale') {
+                let currentDist = Math.hypot(pos.x - state.x, pos.y - state.y);
+                state.scale = Math.max(0.1, initialScale * (currentDist / initialDist));
+            }
+            draw();
+        } else if (e.target === canvas) {
+            let cursor = 'default';
+            if (activeText && textState[activeText].bounds) {
+                let state = textState[activeText];
+                let lPos = getLocalPos(pos, state);
+                const x = state.bounds.xMin - pad, y = state.bounds.yMin - pad;
+                const w = state.bounds.xMax - state.bounds.xMin + pad * 2, h = state.bounds.yMax - state.bounds.yMin + pad * 2;
+                
+                if (Math.hypot(lPos.x - (x + w/2), lPos.y - (y - 40/state.scale)) < 15/state.scale) cursor = 'grab';
+                else if (Math.abs(lPos.x - (x + w)) < 15/state.scale && Math.abs(lPos.y - (y + h)) < 15/state.scale) cursor = 'nwse-resize';
+                else if (isHovering(state, pos)) cursor = 'move';
+            }
+            if (cursor === 'default') {
+                if (isHovering(textState.t1, pos) || isHovering(textState.t2, pos)) cursor = 'pointer';
+            }
+            canvas.style.cursor = cursor;
+        }
+    });
+
+    window.addEventListener('mouseup', () => {
+        dragMode = null;
+    });
+
+    // Función para dibujar texto con arco letra por letra
+    function drawArchedText(text, x, y, config) {
+        ctx.save();
+        ctx.font = `${config.size}px ${config.font}`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+
+        const characters = text.split('');
+        const arcAmount = config.arc / 100; // Intensidad del arco
+        const spacing = config.spacing; // Espaciado configurable
+        const totalWidth = characters.length * spacing;
+
+        let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+
+        // 1. Precalcular posiciones de las letras y límites
+        const charData = characters.map((char, i) => {
+            const charX = x - (totalWidth / 2) + (i * spacing) + (spacing / 2);
+            const offsetIdx = i - (characters.length - 1) / 2;
+            const charY = y + (Math.pow(offsetIdx, 2) * arcAmount * 5);
+            
+            let angle = 0;
+            if (config.randRot > 0) {
+                const rand = Math.sin((i + 1) * 123.456) * 10000;
+                const seededRandom = rand - Math.floor(rand);
+                angle = (seededRandom * 2 - 1) * config.randRot * Math.PI / 180;
+            }
+
+            const maxExt = Math.max(config.sSize, config.dSize) + config.outSize + (config.gOutSize || 0) + (config.gOutBlur || 0) + (config.sBlur || 0);
+            minX = Math.min(minX, charX - config.size / 2 - config.outSize - (config.gOutSize || 0) - (config.gOutBlur || 0) - (config.sBlur || 0));
+            maxX = Math.max(maxX, charX + config.size / 2 + maxExt);
+            minY = Math.min(minY, charY - config.size / 2 - config.outSize - (config.gOutSize || 0) - (config.gOutBlur || 0) - (config.sBlur || 0));
+            maxY = Math.max(maxY, charY + config.size / 2 + maxExt);
+
+            return { char, charX, charY, angle };
+        });
+
+        // 1.5. Recuadro (Box) estilo Píxel Art
+        if (config.boxShow) {
+            const p = 12; // Tamaño del "pixel" o escalón para el borde dentado
+            const bx = minX - config.boxPad;
+            const by = minY - config.boxPad;
+            const bw = maxX - minX + config.boxPad * 2;
+            const bh = maxY - minY + config.boxPad * 2;
+
+            ctx.save();
+            ctx.fillStyle = config.boxFill;
+            ctx.strokeStyle = config.boxOutColor;
+            ctx.lineWidth = config.boxOutSize;
+            
+            ctx.beginPath();
+            ctx.moveTo(bx + p, by); ctx.lineTo(bx + bw - p, by);
+            ctx.lineTo(bx + bw - p, by + p); ctx.lineTo(bx + bw, by + p);
+            ctx.lineTo(bx + bw, by + bh - p); ctx.lineTo(bx + bw - p, by + bh - p);
+            ctx.lineTo(bx + bw - p, by + bh); ctx.lineTo(bx + p, by + bh);
+            ctx.lineTo(bx + p, by + bh - p); ctx.lineTo(bx, by + bh - p);
+            ctx.lineTo(bx, by + p); ctx.lineTo(bx + p, by + p);
+            ctx.closePath();
+
+            ctx.fill();
+            if (config.boxOutSize > 0) ctx.stroke();
+            ctx.restore();
+
+            minX = bx - config.boxOutSize / 2;
+            maxX = bx + bw + config.boxOutSize / 2;
+            minY = by - config.boxOutSize / 2;
+            maxY = by + bh + config.boxOutSize / 2;
+        }
+
+        // 2. Pass 0: Contorno Global / Resplandor (Al fondo de todo)
+        if (config.gOutSize > 0 || config.gOutBlur > 0) {
+            ctx.save();
+            ctx.lineJoin = 'round';
+            ctx.miterLimit = 2;
+            ctx.strokeStyle = config.gOutColor;
+            ctx.fillStyle = config.gOutColor;
+            
+            if (config.gOutSize > 0) ctx.lineWidth = config.gOutSize * 2;
+            else ctx.lineWidth = 0;
+
+            if (config.gOutBlur > 0) {
+                ctx.shadowBlur = config.gOutBlur;
+                ctx.shadowColor = config.gOutColor;
+            }
+
+            charData.forEach(d => {
+                ctx.save(); ctx.translate(d.charX, d.charY); ctx.rotate(d.angle);
+                if (config.gOutSize > 0) {
+                    if (config.sSize > 0) ctx.strokeText(d.char, config.sSize, config.sSize);
+                    if (config.dSize > 0) {
+                        for(let d_i = 1; d_i <= config.dSize; d_i += 2) ctx.strokeText(d.char, d_i, d_i);
+                        ctx.strokeText(d.char, config.dSize, config.dSize);
+                    }
+                    ctx.strokeText(d.char, 0, 0);
+                } else {
+                    if (config.sSize > 0) ctx.fillText(d.char, config.sSize, config.sSize);
+                    if (config.dSize > 0) {
+                        for(let d_i = 1; d_i <= config.dSize; d_i += 2) ctx.fillText(d.char, d_i, d_i);
+                        ctx.fillText(d.char, config.dSize, config.dSize);
+                    }
+                    ctx.fillText(d.char, 0, 0);
+                }
+                ctx.restore();
+            });
+            ctx.restore();
+        }
+
+        // 3. Pass 1: Sombra
+        if(config.sSize > 0 || config.sBlur > 0) {
+            ctx.save();
+            ctx.globalAlpha = config.sAlpha !== undefined ? config.sAlpha : 1;
+            if (config.sBlur > 0) {
+                ctx.shadowBlur = config.sBlur;
+                ctx.shadowColor = config.sColor;
+            }
+            ctx.fillStyle = config.sColor;
+            charData.forEach(d => {
+                ctx.save(); ctx.translate(d.charX, d.charY); ctx.rotate(d.angle);
+                ctx.fillText(d.char, config.sSize, config.sSize);
+                ctx.restore();
+            });
+            ctx.restore();
+        }
+
+        // 4. Pass 2: Profundidad
+        if(config.dSize > 0) {
+            ctx.fillStyle = config.dColor;
+            charData.forEach(d => {
+                ctx.save(); ctx.translate(d.charX, d.charY); ctx.rotate(d.angle);
+                for(let d_i = 1; d_i <= config.dSize; d_i++) {
+                    ctx.fillText(d.char, d_i, d_i);
+                }
+                ctx.restore();
+            });
+        }
+
+        // 5. Pass 3: Cara y Contorno Frontal
+        charData.forEach(d => {
+            ctx.save(); ctx.translate(d.charX, d.charY); ctx.rotate(d.angle);
+            
+            if (config.outSize > 0) {
+                ctx.lineWidth = config.outSize * 2;
+                ctx.strokeStyle = config.outColor;
+                ctx.lineJoin = 'round';
+                ctx.strokeText(d.char, 0, 0);
+            }
+
+            if (config.dither) {
+                const pattern = getDitherPattern(config.colorA, config.colorB, config.size, config.ditherScale, config.ditherWhite);
+                const domMatrix = new DOMMatrix().translate(0, -config.size / 2);
+                pattern.setTransform(domMatrix);
+                ctx.fillStyle = pattern;
+            } else {
+                const grad = ctx.createLinearGradient(0, -config.size/2, 0, config.size/2);
+                grad.addColorStop(0, config.colorA);
+                grad.addColorStop(1, config.colorB);
+                ctx.fillStyle = grad;
+            }
+            ctx.fillText(d.char, 0, 0);
+            
+            ctx.restore();
+        });
+
+        ctx.restore();
+        return { xMin: minX, xMax: maxX, yMin: minY, yMax: maxY };
+    }
+
+    // Dibujar la caja de selección y los tiradores interactivos
+    function drawSelectionBox(state) {
+        if (!state.bounds) return;
+        ctx.save();
+        ctx.translate(state.x, state.y);
+        ctx.rotate(state.angle);
+        ctx.scale(state.scale, state.scale);
+        
+        const x = state.bounds.xMin - pad;
+        const y = state.bounds.yMin - pad;
+        const w = state.bounds.xMax - state.bounds.xMin + pad * 2;
+        const h = state.bounds.yMax - state.bounds.yMin + pad * 2;
+
+        ctx.strokeStyle = '#00e5ff';
+        ctx.lineWidth = 2 / state.scale;
+        ctx.setLineDash([5 / state.scale, 5 / state.scale]);
+        ctx.strokeRect(x, y, w, h);
+        ctx.setLineDash([]);
+        
+        ctx.fillStyle = '#00e5ff';
+        const hw = 8 / state.scale; 
+        ctx.fillRect(x + w - hw, y + h - hw, hw * 2, hw * 2); // Cuadro inferior derecho (escala)
+
+        const rotY = y - 40 / state.scale;
+        ctx.beginPath();
+        ctx.moveTo(x + w/2, y);
+        ctx.lineTo(x + w/2, rotY);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(x + w/2, rotY, hw, 0, Math.PI * 2);
+        ctx.fill(); // Círculo superior (rotación)
+        ctx.restore();
+    }
+
+    function draw(forExport = false) {
+        // Limpiar canvas
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        // Dibujar imagen de fondo si existe
+        if (bgImageObj) {
+            ctx.drawImage(bgImageObj, 0, 0, canvas.width, canvas.height);
+        }
+        
+        // Capa de Color de Fondo (Overlay)
+        const bgAlpha = parseFloat(document.getElementById('bgAlpha').value);
+        if (bgAlpha > 0) {
+            ctx.save();
+            ctx.globalAlpha = bgAlpha;
+            ctx.fillStyle = document.getElementById('bgColor').value;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.restore();
+        }
+
+        // Configuraciones comunes
+        const depth = parseInt(document.getElementById('depthSize').value);
+        const dCol = document.getElementById('depthColor').value;
+        const sSize = parseInt(document.getElementById('shadowSize').value);
+        const sCol = document.getElementById('shadowColor').value;
+        const sAlpha = parseFloat(document.getElementById('shadowAlpha').value);
+        const sBlur = parseInt(document.getElementById('shadowBlur').value);
+        const gOutSize = parseInt(document.getElementById('gOutSize').value);
+        const gOutBlur = parseInt(document.getElementById('gOutBlur').value);
+        const gOutColor = document.getElementById('gOutColor').value;
+        const order = document.getElementById('layerOrder').value;
+
+        const drawT1 = () => {
+            ctx.save();
+            ctx.translate(textState.t1.x, textState.t1.y);
+            ctx.rotate(textState.t1.angle);
+            ctx.scale(textState.t1.scale, textState.t1.scale);
+            textState.t1.bounds = drawArchedText(document.getElementById('text1').value, 0, 0, {
+                font: document.getElementById('font1').value,
+                size: parseInt(document.getElementById('size1').value),
+                spacing: parseInt(document.getElementById('spacing1').value),
+                colorA: document.getElementById('c1a').value,
+                colorB: document.getElementById('c1b').value,
+                dither: document.getElementById('dither1').checked,
+                ditherScale: parseInt(document.getElementById('ditherScale1').value),
+                ditherWhite: document.getElementById('ditherWhite1').checked,
+                arc: document.getElementById('arc1').value,
+                randRot: parseInt(document.getElementById('randRot1').value),
+                outSize: parseInt(document.getElementById('outSize1').value),
+                outColor: document.getElementById('outColor1').value,
+                boxShow: document.getElementById('boxShow1').checked,
+                boxFill: document.getElementById('boxFill1').value,
+                boxOutColor: document.getElementById('boxOutColor1').value,
+                boxOutSize: parseInt(document.getElementById('boxOutSize1').value),
+                boxPad: parseInt(document.getElementById('boxPad1').value),
+                dSize: depth, dColor: dCol,
+                gOutSize: gOutSize, gOutBlur: gOutBlur, gOutColor: gOutColor,
+                sSize: sSize, sColor: sCol, sAlpha: sAlpha, sBlur: sBlur
+            });
+            ctx.restore();
+        };
+
+        const drawT2 = () => {
+            ctx.save();
+            ctx.translate(textState.t2.x, textState.t2.y);
+            ctx.rotate(textState.t2.angle);
+            ctx.scale(textState.t2.scale, textState.t2.scale);
+            textState.t2.bounds = drawArchedText(document.getElementById('text2').value, 0, 0, {
+                font: document.getElementById('font2').value,
+                size: parseInt(document.getElementById('size2').value),
+                spacing: parseInt(document.getElementById('spacing2').value),
+                colorA: document.getElementById('c2a').value,
+                colorB: document.getElementById('c2b').value,
+                dither: document.getElementById('dither2').checked,
+                ditherScale: parseInt(document.getElementById('ditherScale2').value),
+                ditherWhite: document.getElementById('ditherWhite2').checked,
+                arc: document.getElementById('arc2').value,
+                randRot: parseInt(document.getElementById('randRot2').value),
+                outSize: parseInt(document.getElementById('outSize2').value),
+                outColor: document.getElementById('outColor2').value,
+                boxShow: document.getElementById('boxShow2').checked,
+                boxFill: document.getElementById('boxFill2').value,
+                boxOutColor: document.getElementById('boxOutColor2').value,
+                boxOutSize: parseInt(document.getElementById('boxOutSize2').value),
+                boxPad: parseInt(document.getElementById('boxPad2').value),
+                dSize: depth, dColor: dCol,
+                gOutSize: gOutSize, gOutBlur: gOutBlur, gOutColor: gOutColor,
+                sSize: sSize, sColor: sCol, sAlpha: sAlpha, sBlur: sBlur
+            });
+            ctx.restore();
+        };
+
+        // Respetar el orden seleccionado
+        if (order === 't1_top') { drawT2(); drawT1(); } 
+        else { drawT1(); drawT2(); }
+        
+        // Dibujar caja de selección interactiva (no en la exportación final)
+        if (forExport !== true && activeText) {
+            drawSelectionBox(textState[activeText]);
+        }
+    }
+
+    function download() {
+        draw(true); // Redibujar ocultando la selección para la captura final
+        const link = document.createElement('a');
+        link.download = 'pixel-title.png';
+        link.href = canvas.toDataURL();
+        link.click();
+        draw(); // Volver a mostrar los controles
+    }
+
+    // --- Guardar y Cargar Configuración (JSON) ---
+    function saveConfig() {
+        const config = {
+            general: {
+                previewBg: document.getElementById('previewBg').value,
+                layerOrder: document.getElementById('layerOrder').value,
+                bgImageData: bgImageObj ? bgImageObj.src : null, // Guarda la imagen subida en Base64
+                bgColor: document.getElementById('bgColor').value,
+                bgAlpha: document.getElementById('bgAlpha').value,
+                depthSize: document.getElementById('depthSize').value,
+                depthColor: document.getElementById('depthColor').value,
+                shadowSize: document.getElementById('shadowSize').value,
+                shadowColor: document.getElementById('shadowColor').value,
+                shadowAlpha: document.getElementById('shadowAlpha').value,
+                shadowBlur: document.getElementById('shadowBlur').value,
+                gOutSize: document.getElementById('gOutSize').value,
+                gOutBlur: document.getElementById('gOutBlur').value,
+                gOutColor: document.getElementById('gOutColor').value,
+            },
+            text1: {
+                text1: document.getElementById('text1').value,
+                font1: document.getElementById('font1').value,
+                size1: document.getElementById('size1').value,
+                spacing1: document.getElementById('spacing1').value,
+                c1a: document.getElementById('c1a').value,
+                c1b: document.getElementById('c1b').value,
+                dither1: document.getElementById('dither1').checked,
+                ditherWhite1: document.getElementById('ditherWhite1').checked,
+                ditherScale1: document.getElementById('ditherScale1').value,
+                arc1: document.getElementById('arc1').value,
+                randRot1: document.getElementById('randRot1').value,
+                outSize1: document.getElementById('outSize1').value,
+                outColor1: document.getElementById('outColor1').value,
+                boxShow1: document.getElementById('boxShow1').checked,
+                boxFill1: document.getElementById('boxFill1').value,
+                boxOutColor1: document.getElementById('boxOutColor1').value,
+                boxOutSize1: document.getElementById('boxOutSize1').value,
+                boxPad1: document.getElementById('boxPad1').value,
+            },
+            text2: {
+                text2: document.getElementById('text2').value,
+                font2: document.getElementById('font2').value,
+                size2: document.getElementById('size2').value,
+                spacing2: document.getElementById('spacing2').value,
+                c2a: document.getElementById('c2a').value,
+                c2b: document.getElementById('c2b').value,
+                dither2: document.getElementById('dither2').checked,
+                ditherWhite2: document.getElementById('ditherWhite2').checked,
+                ditherScale2: document.getElementById('ditherScale2').value,
+                arc2: document.getElementById('arc2').value,
+                randRot2: document.getElementById('randRot2').value,
+                outSize2: document.getElementById('outSize2').value,
+                outColor2: document.getElementById('outColor2').value,
+                boxShow2: document.getElementById('boxShow2').checked,
+                boxFill2: document.getElementById('boxFill2').value,
+                boxOutColor2: document.getElementById('boxOutColor2').value,
+                boxOutSize2: document.getElementById('boxOutSize2').value,
+                boxPad2: document.getElementById('boxPad2').value,
+            },
+            state: {
+                t1: { x: textState.t1.x, y: textState.t1.y, angle: textState.t1.angle, scale: textState.t1.scale },
+                t2: { x: textState.t2.x, y: textState.t2.y, angle: textState.t2.angle, scale: textState.t2.scale }
+            }
+        };
+
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(config, null, 2));
+        const downloadAnchorNode = document.createElement('a');
+        downloadAnchorNode.setAttribute("href", dataStr);
+        downloadAnchorNode.setAttribute("download", "pixel-title-config.json");
+        document.body.appendChild(downloadAnchorNode);
+        downloadAnchorNode.click();
+        downloadAnchorNode.remove();
+    }
+
+    function loadConfig(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            try {
+                const config = JSON.parse(e.target.result);
+                
+                const applyObjToDOM = (obj, prefix = '') => {
+                    for (let key in obj) {
+                        let elId = prefix + key;
+                        let el = document.getElementById(elId);
+                        if (el) {
+                            if (el.type === 'checkbox') el.checked = obj[key];
+                            else el.value = obj[key];
+                        }
+                    }
+                };
+                
+                if (config.general) applyObjToDOM(config.general);
+                if (config.text1) applyObjToDOM(config.text1, '');
+                if (config.text2) applyObjToDOM(config.text2, '');
+                
+                updatePreviewBg();
+                
+                // Cargar imagen en base64 de fondo si estaba guardada en el JSON
+                if (config.general && config.general.bgImageData) {
+                    const img = new Image();
+                    img.onload = function() { bgImageObj = img; draw(); };
+                    img.src = config.general.bgImageData;
+                } else {
+                    bgImageObj = null;
+                    document.getElementById('bgImage').value = '';
+                }
+
+                if (config.state) {
+                    if (config.state.t1) Object.assign(textState.t1, config.state.t1);
+                    if (config.state.t2) Object.assign(textState.t2, config.state.t2);
+                }
+                
+                draw();
+            } catch (err) {
+                alert("Error al cargar la configuración: Archivo inválido.");
+                console.error(err);
+            }
+        };
+        reader.readAsText(file);
+        event.target.value = ""; // Resetea el input file
+    }
+
+    // Asegurar que las fuentes estén cargadas antes de dibujar
+    document.fonts.ready.then(() => {
+        draw();
+    });
+    // Redibujar en caso de que alguna fuente experimente un retraso en la carga
+    document.fonts.onloadingdone = () => draw();
+</script>
+
+</body>
+</html>
