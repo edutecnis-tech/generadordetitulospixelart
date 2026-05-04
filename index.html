@@ -21,7 +21,12 @@
         #controls::-webkit-scrollbar-thumb { background: #3a3a3a; border-radius: 10px; border: 2px solid var(--panel); }
         #controls::-webkit-scrollbar-thumb:hover { background: #555; }
 
-        .group { margin-bottom: 12px; border-bottom: 1px solid #000; box-shadow: 0 1px 0 #2a2a2a; padding-bottom: 10px; }
+        details.group { margin-bottom: 12px; border-bottom: 1px solid #000; box-shadow: 0 1px 0 #2a2a2a; padding-bottom: 10px; transition: all 0.3s; }
+        details.group summary { font-size: 13px; font-weight: bold; cursor: pointer; color: var(--accent); margin-bottom: 10px; outline: none; list-style: none; user-select: none; display: flex; justify-content: space-between; align-items: center; padding-right: 5px; transition: color 0.2s; }
+        details.group summary:hover { color: #a450ff; }
+        details.group summary::-webkit-details-marker { display: none; }
+        details.group summary::after { content: '▼'; font-size: 10px; color: #737373; transition: transform 0.3s; }
+        details.group[open] summary::after { transform: rotate(180deg); color: var(--accent); }
         label { display: block; font-size: 11px; margin-bottom: 4px; color: #737373; font-weight: 600; }
         input[type="text"], input[type="number"], select { 
             box-sizing: border-box; width: 100%; padding: 8px 12px; background: #2a2a2a; 
@@ -105,8 +110,8 @@
 <div id="controls">
     <h2>CONTROLES</h2>
     
-    <div class="group">
-        <label title="Configuraciones globales que afectan todo el lienzo">Ajustes Generales</label>
+    <details class="group">
+        <summary title="Configuraciones globales que afectan todo el lienzo">Ajustes Generales</summary>
         <label title="Cambia el color de fondo del panel (solo visualización)">Fondo de Previsualización</label>
         <select id="previewBg" onchange="updatePreviewBg()" title="Cambia el color de fondo del panel (solo visualización)">
             <option value="dark" selected>Oscuro</option>
@@ -125,10 +130,11 @@
             <div><input type="color" id="bgColor" value="#000000" oninput="draw()" title="Color de la capa de fondo"></div>
             <div><input type="range" id="bgAlpha" min="0" max="1" step="0.05" value="0" oninput="draw()" title="Opacidad de la capa de fondo"></div>
         </div>
-    </div>
+    </details>
 
-    <div class="group">
-        <label title="Texto que aparecerá en la parte principal">Texto Superior</label>
+    <details class="group">
+        <summary title="Opciones y estilos para el primer texto">Texto Superior</summary>
+        <label title="Texto que aparecerá en la parte principal">Contenido del Texto</label>
         <input type="text" id="text1" value="PIXEL" oninput="draw()" title="Texto que aparecerá en la parte principal">
         <label title="Estilo tipográfico del texto">Fuente</label>
         <select id="font1" onchange="draw()" title="Estilo tipográfico del texto">
@@ -191,10 +197,11 @@
             <div title="Grosor de Línea"><label>Grosor Línea</label><input type="range" id="boxOutSize1" min="0" max="20" value="4" oninput="draw()" title="Grosor de la línea del botón"></div>
             <div title="Espaciado (Padding)"><label>Padding</label><input type="range" id="boxPad1" min="0" max="100" value="30" oninput="draw()" title="Espaciado interior del botón"></div>
         </div>
-    </div>
+    </details>
 
-    <div class="group">
-        <label title="Texto que aparecerá en la parte secundaria">Texto Inferior</label>
+    <details class="group">
+        <summary title="Opciones y estilos para el segundo texto">Texto Inferior</summary>
+        <label title="Texto que aparecerá en la parte secundaria">Contenido del Texto</label>
         <input type="text" id="text2" value="MASTER" oninput="draw()" title="Texto que aparecerá en la parte secundaria">
         <label title="Estilo tipográfico del texto">Fuente</label>
         <select id="font2" onchange="draw()" title="Estilo tipográfico del texto">
@@ -257,9 +264,10 @@
             <div title="Grosor de Línea"><label>Grosor Línea</label><input type="range" id="boxOutSize2" min="0" max="20" value="4" oninput="draw()" title="Grosor de la línea del botón"></div>
             <div title="Espaciado (Padding)"><label>Padding</label><input type="range" id="boxPad2" min="0" max="100" value="30" oninput="draw()" title="Espaciado interior del botón"></div>
         </div>
-    </div>
+    </details>
 
-    <div class="group">
+    <details class="group">
+        <summary title="Ajustes de sombras y 3D para todo el diseño">Efectos Globales (3D y Sombra)</summary>
         <label title="Longitud y color del efecto volumétrico/extrusión 3D">Profundidad (3D)</label>
         <div class="row" title="Longitud y color del efecto volumétrico/extrusión 3D">
             <div><input type="range" id="depthSize" min="0" max="30" value="10" oninput="draw()" title="Largo de la profundidad"></div>
@@ -280,7 +288,7 @@
             <div title="Difuminado (Blur)"><input type="range" id="gOutBlur" min="0" max="50" value="0" oninput="draw()" title="Difuminado del contorno global"></div>
             <div title="Color"><input type="color" id="gOutColor" value="#ffffff" oninput="draw()" title="Color del contorno global"></div>
         </div>
-    </div>
+    </details>
 
     <div class="row" style="margin-bottom: 10px;">
         <button onclick="saveConfig()" title="Guarda la configuración actual en un archivo JSON" style="font-size: 12px; padding: 10px; background: #00e5ff; color: #000;">Guardar JSON</button>
