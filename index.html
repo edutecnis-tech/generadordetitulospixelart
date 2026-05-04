@@ -5,7 +5,7 @@
     <title>Generador de textos estilo Píxel art</title>
     <link href="https://fonts.googleapis.com/css2?family=Barriecito&family=Bitcount+Grid+Double&family=Chelsea+Market&family=Chewy&family=Doto&family=DynaPuff&family=Google+Sans:wght@400..700&family=Jersey+10&family=Luckiest+Guy&family=Matemasie&family=Micro+5&family=Pixelify+Sans:wght@400..700&family=Press+Start+2P&family=Ranchers&family=Schoolbell&family=Silkscreen:wght@400;700&family=Sixtyfour&family=Spicy+Rice&family=Tiny5&display=swap" rel="stylesheet">
     <style>
-        :root { --bg: #121212; --panel: #151515; --text: #6200ea; --accent: #6200ea; }
+        :root { --bg: #121212; --panel: #151515; --text: #8e41fa; --accent: #7522e8; }
         body { font-family: 'Google Sans', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg); color: var(--text); display: flex; height: 100vh; margin: 0; overflow: hidden; }
         
         /* Panel Lateral */
@@ -14,6 +14,7 @@
             overflow-y: auto; box-shadow: 5px 0 20px rgba(0,0,0,0.8); 
             border-radius: 0 40px 40px 0; z-index: 10;
         }
+        #controls h2 { color: #d3d3d3; }
 
         /* Personalización del Scrollbar (Estilo Oscuro) */
         #controls::-webkit-scrollbar { width: 10px; }
@@ -79,8 +80,13 @@
             box-shadow: 0 10px 30px rgba(0,0,0,0.5); overflow: hidden;
         }
         canvas { image-rendering: pixelated; width: 100%; height: 100%; display: block; }
-        button { background: var(--accent); color: white; border: none; padding: 12px; width: 100%; cursor: pointer; font-weight: bold; font-size: 14px; border-radius: 50px; transition: 0.3s; }
+        button { font-family: 'Google Sans', sans-serif; background: var(--accent); color: white; border: none; padding: 12px; width: 100%; cursor: pointer; font-weight: bold; font-size: 14px; border-radius: 50px; transition: 0.3s; }
         button:hover { background: #7c4dff; transform: scale(1.02); }
+        
+        /* Cajas de información extra */
+        .tip-box { background: #2a2a2a; border: 1px solid #444; border-radius: 15px; padding: 12px; margin-top: 20px; font-size: 12px; color: #d3d3d3; text-align: center; box-shadow: 0 4px 8px rgba(0,0,0,0.4); line-height: 1.4; }
+        .tip-box strong { color: var(--text); font-weight: bold; }
+        .disclaimer { margin-top: 10px; font-size: 10px; color: #737373; text-align: center; font-style: italic; }
     </style>
 </head>
 <body>
@@ -295,7 +301,17 @@
         <button onclick="document.getElementById('loadConfigInput').click()" title="Carga una configuración desde un archivo JSON" style="font-size: 12px; padding: 10px; background: #333;">Cargar JSON</button>
         <input type="file" id="loadConfigInput" accept=".json" style="display: none;" onchange="loadConfig(event)">
     </div>
-    <button onclick="download()" title="Exporta tu diseño final como imagen PNG (HD 1920x1080)">Descargar PNG</button>
+    <div class="row">
+        <button onclick="download()" title="Exporta tu diseño final como imagen PNG (HD 1920x1080)">Descargar PNG</button>
+        <button onclick="downloadSVG()" title="Exporta tu diseño final en formato vectorial SVG" style="background: #b800d4;">Descargar SVG</button>
+    </div>
+
+    <div class="tip-box">
+        💡 <strong>Tip:</strong> Puedes editar el texto haciendo <em>doble clic</em> directamente en el canvas, así como <strong>mover</strong>, <strong>escalar</strong> y <strong>rotar</strong> los textos libremente.
+    </div>
+    <div class="disclaimer">
+        * Este script está diseñado exclusivamente para el Taller de Diseño Digital 4 de la UCB.
+    </div>
 </div>
 
 <div id="preview">
@@ -307,7 +323,141 @@
 
 <script>
     const canvas = document.getElementById('canvas');
-    const ctx = canvas.getContext('2d');
+    let ctx = canvas.getContext('2d');
+
+    // Simulador de Canvas Context para exportar nativamente a SVG
+    class SVGExport {
+        constructor(width, height) {
+            this.canvas = { width, height };
+            this.svgElements = [];
+            this.defs = new Map();
+            this.defCount = 0;
+            
+            this.stateStack = [];
+            this.state = {
+                transform: new DOMMatrix(), globalAlpha: 1, fillStyle: '#000000', strokeStyle: '#000000',
+                lineWidth: 1, lineJoin: 'miter', miterLimit: 10, shadowBlur: 0, shadowColor: 'rgba(0,0,0,0)',
+                font: '10px sans-serif', textAlign: 'start', textBaseline: 'alphabetic'
+            };
+            this.currentPath = '';
+        }
+        getTransformString() {
+            const t = this.state.transform;
+            if (t.isIdentity) return '';
+            return ` transform="matrix(${t.a}, ${t.b}, ${t.c}, ${t.d}, ${t.e}, ${t.f})"`;
+        }
+        getStyleString(isStroke, isFill) {
+            let str = '';
+            if (isFill) {
+                let fill = this.state.fillStyle;
+                if (fill && fill.id) fill = `url(#${fill.id})`;
+                str += ` fill="${fill}"`;
+                if (this.state.globalAlpha < 1) str += ` fill-opacity="${this.state.globalAlpha}"`;
+            }
+            if (isStroke) {
+                let stroke = this.state.strokeStyle;
+                if (stroke && stroke.id) stroke = `url(#${stroke.id})`;
+                str += ` stroke="${stroke}" stroke-width="${this.state.lineWidth}" stroke-linejoin="${this.state.lineJoin}" stroke-miterlimit="${this.state.miterLimit}"`;
+                if (this.state.globalAlpha < 1) str += ` stroke-opacity="${this.state.globalAlpha}"`;
+            }
+            if (this.state.shadowBlur > 0 && this.state.shadowColor !== 'rgba(0,0,0,0)') {
+                const filterId = this.getShadowFilter(this.state.shadowColor, this.state.shadowBlur);
+                str += ` filter="url(#${filterId})"`;
+            }
+            return str;
+        }
+        getShadowFilter(color, blur) {
+            const key = `shadow_${color}_${blur}`;
+            if (!this.defs.has(key)) {
+                const stdDev = blur / 2;
+                const filter = `<filter id="${key}" x="-50%" y="-50%" width="200%" height="200%"><feDropShadow dx="0" dy="0" stdDeviation="${stdDev}" flood-color="${color}"/></filter>`;
+                this.defs.set(key, filter);
+            }
+            return key;
+        }
+        clearRect() {}
+        save() { this.stateStack.push({ ...this.state, transform: new DOMMatrix(this.state.transform) }); }
+        restore() { this.state = this.stateStack.pop(); }
+        translate(x, y) { this.state.transform.translateSelf(x, y); }
+        rotate(angle) { this.state.transform.rotateSelf(angle * 180 / Math.PI); }
+        scale(x, y) { this.state.transform.scaleSelf(x, y); }
+        drawImage(img, x, y, w, h) {
+            const t = this.getTransformString();
+            this.svgElements.push(`<image href="${img.src}" x="${x}" y="${y}" width="${w}" height="${h}"${t}/>`);
+        }
+        fillRect(x, y, w, h) {
+            const t = this.getTransformString();
+            const s = this.getStyleString(false, true);
+            this.svgElements.push(`<rect x="${x}" y="${y}" width="${w}" height="${h}"${s}${t}/>`);
+        }
+        beginPath() { this.currentPath = ''; }
+        moveTo(x, y) { this.currentPath += `M ${x} ${y} `; }
+        lineTo(x, y) { this.currentPath += `L ${x} ${y} `; }
+        closePath() { this.currentPath += `Z `; }
+        fill() {
+            const t = this.getTransformString();
+            const s = this.getStyleString(false, true);
+            this.svgElements.push(`<path d="${this.currentPath}"${s}${t}/>`);
+        }
+        stroke() {
+            const t = this.getTransformString();
+            const s = this.getStyleString(true, false);
+            this.svgElements.push(`<path d="${this.currentPath}" fill="none"${s}${t}/>`);
+        }
+        fillText(text, x, y) { this.drawText(text, x, y, false, true); }
+        strokeText(text, x, y) { this.drawText(text, x, y, true, false); }
+        drawText(text, x, y, isStroke, isFill) {
+            const t = this.getTransformString();
+            const s = this.getStyleString(isStroke, isFill);
+            let fontSize = "10px", fontFamily = "sans-serif";
+            const fontMatch = this.state.font.match(/(\d+px)\s+(.*)/);
+            if (fontMatch) { fontSize = fontMatch[1]; fontFamily = fontMatch[2].replace(/'/g, ""); }
+            let anchor = "start", baseline = "auto";
+            if (this.state.textAlign === "center") anchor = "middle";
+            if (this.state.textAlign === "right") anchor = "end";
+            if (this.state.textBaseline === "middle") baseline = "central";
+            if (this.state.textBaseline === "top") baseline = "text-before-edge";
+            if (this.state.textBaseline === "bottom") baseline = "text-after-edge";
+            const safeText = text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+            this.svgElements.push(`<text x="${x}" y="${y}" font-family="${fontFamily}" font-size="${fontSize}" text-anchor="${anchor}" dominant-baseline="${baseline}"${s}${t}>${safeText}</text>`);
+        }
+        createLinearGradient(x0, y0, x1, y1) {
+            const id = `grad_${this.defCount++}`;
+            const grad = { id, x0, y0, x1, y1, stops: [], addColorStop: function(offset, color) { this.stops.push(`<stop offset="${offset * 100}%" stop-color="${color}"/>`); } };
+            this.defs.set(id, grad); return grad;
+        }
+        createPattern(canvasElement, repetition) {
+            const id = `pat_${this.defCount++}`;
+            const pat = { id, canvas: canvasElement, transformMatrix: new DOMMatrix(), setTransform: function(matrix) { this.transformMatrix = matrix; } };
+            this.defs.set(id, pat); return pat;
+        }
+        set globalAlpha(v) { this.state.globalAlpha = v; } get globalAlpha() { return this.state.globalAlpha; }
+        set fillStyle(v) { this.state.fillStyle = v; } get fillStyle() { return this.state.fillStyle; }
+        set strokeStyle(v) { this.state.strokeStyle = v; } get strokeStyle() { return this.state.strokeStyle; }
+        set lineWidth(v) { this.state.lineWidth = v; } get lineWidth() { return this.state.lineWidth; }
+        set lineJoin(v) { this.state.lineJoin = v; } get lineJoin() { return this.state.lineJoin; }
+        set miterLimit(v) { this.state.miterLimit = v; } get miterLimit() { return this.state.miterLimit; }
+        set shadowBlur(v) { this.state.shadowBlur = v; } get shadowBlur() { return this.state.shadowBlur; }
+        set shadowColor(v) { this.state.shadowColor = v; } get shadowColor() { return this.state.shadowColor; }
+        set font(v) { this.state.font = v; } get font() { return this.state.font; }
+        set textAlign(v) { this.state.textAlign = v; } get textAlign() { return this.state.textAlign; }
+        set textBaseline(v) { this.state.textBaseline = v; } get textBaseline() { return this.state.textBaseline; }
+        setLineDash(dashArray) {}
+        render() {
+            let defsStr = '';
+            for (const [key, value] of this.defs.entries()) {
+                if (typeof value === 'string') defsStr += value; 
+                else if (value.stops) defsStr += `<linearGradient id="${value.id}" x1="${value.x0}" y1="${value.y0}" x2="${value.x1}" y2="${value.y1}" gradientUnits="userSpaceOnUse">\n${value.stops.join('\n')}\n</linearGradient>\n`;
+                else if (value.canvas) {
+                    const t = value.transformMatrix, transform = t.isIdentity ? '' : ` patternTransform="matrix(${t.a}, ${t.b}, ${t.c}, ${t.d}, ${t.e}, ${t.f})"`;
+                    defsStr += `<pattern id="${value.id}" patternUnits="userSpaceOnUse" width="${value.canvas.width}" height="${value.canvas.height}"${transform}>\n<image href="${value.canvas.toDataURL('image/png')}" width="${value.canvas.width}" height="${value.canvas.height}"/>\n</pattern>\n`;
+                }
+            }
+            return `<svg xmlns="http://www.w3.org/2000/svg" width="${this.canvas.width}" height="${this.canvas.height}" viewBox="0 0 ${this.canvas.width} ${this.canvas.height}">
+<defs><style>@import url('https://fonts.googleapis.com/css2?family=Barriecito&amp;family=Bitcount+Grid+Double&amp;family=Chelsea+Market&amp;family=Chewy&amp;family=Doto&amp;family=DynaPuff&amp;family=Google+Sans:wght@400..700&amp;family=Jersey+10&amp;family=Luckiest+Guy&amp;family=Matemasie&amp;family=Micro+5&amp;family=Pixelify+Sans:wght@400..700&amp;family=Press+Start+2P&amp;family=Ranchers&amp;family=Schoolbell&amp;family=Silkscreen:wght@400;700&amp;family=Sixtyfour&amp;family=Spicy+Rice&amp;family=Tiny5&amp;display=swap');</style>
+${defsStr}</defs>\n${this.svgElements.join('\n')}\n</svg>`;
+        }
+    }
 
     // Utilidades para Dither
     function hexToRgb(hex) {
@@ -319,7 +469,7 @@
     function getDitherPattern(colorA, colorB, size, scale, useWhite) {
         size = Math.max(1, Math.floor(size)); // Evita errores de tamaño
         scale = Math.max(1, Math.floor(scale));
-        const key = `${colorA}-${colorB}-${size}-${scale}-${useWhite}`;
+        const key = `${colorA}-${colorB}-${size}-${scale}-${useWhite}-${ctx.constructor.name}`;
         if (ditherCache[key]) return ditherCache[key];
 
         const c1 = hexToRgb(colorA);
@@ -890,6 +1040,23 @@
         link.href = canvas.toDataURL();
         link.click();
         draw(); // Volver a mostrar los controles
+    }
+
+    function downloadSVG() {
+        const originalCtx = ctx;
+        ctx = new SVGExport(canvas.width, canvas.height); // Activar exportador SVG
+        draw(true); // Redibujar para captura vectorizada
+        const svgString = ctx.render();
+        ctx = originalCtx; // Restaurar canvas tradicional
+        
+        const blob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.download = 'pixel-title.svg';
+        link.href = url;
+        link.click();
+        URL.revokeObjectURL(url);
+        draw();
     }
 
     // --- Guardar y Cargar Configuración (JSON) ---
